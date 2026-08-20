@@ -13627,8 +13627,71 @@ if (action === 'add') {
                             }
                         }
                         
+                        // The in-memory cache can miss messages after a restart, reconnect,
+                        // or when Baileys emits the revoke before the cache listener runs.
+                        // Recover the original WebMessageInfo from the bound message store.
+                        if (!msgData && store?.loadMessage) {
+                            const storeJids = [targetRemoteJid, remoteJid, normalizedTargetJid, normalizedRemoteJid]
+                                .filter(Boolean)
+                                .filter((jid, index, jids) => jids.indexOf(jid) === index);
+                            for (const storeJid of storeJids) {
+                                try {
+                                    const storedMessage = await store.loadMessage(storeJid, targetId);
+                                    const storedContent = storedMessage?.message;
+                                    if (!storedContent) continue;
+
+                                    const storedKey = storedMessage.key || deletedKey || { remoteJid: storeJid, id: targetId };
+                                    const content = storedContent.ephemeralMessage?.message || storedContent;
+                                    let storedText = content.conversation ||
+                                        content.extendedTextMessage?.text ||
+                                        content.imageMessage?.caption ||
+                                        content.videoMessage?.caption ||
+                                        content.documentMessage?.caption || '';
+                                    let storedMediaType = null;
+                                    let storedMediaCaption = '';
+                                    if (content.imageMessage) {
+                                        storedMediaType = 'image';
+                                        storedMediaCaption = content.imageMessage.caption || '';
+                                    } else if (content.videoMessage) {
+                                        storedMediaType = 'video';
+                                        storedMediaCaption = content.videoMessage.caption || '';
+                                    } else if (content.audioMessage) {
+                                        storedMediaType = 'audio';
+                                    } else if (content.documentMessage) {
+                                        storedMediaType = 'document';
+                                        storedMediaCaption = content.documentMessage.caption || '';
+                                    } else if (content.stickerMessage) {
+                                        storedMediaType = 'sticker';
+                                    }
+
+                                    const storedRemoteJid = storedKey.remoteJid || storeJid;
+                                    const storedSender = storedKey.participant || storedMessage.participant || storedRemoteJid;
+                                    msgData = {
+                                        messageId: storedKey.id || targetId,
+                                        sender: storedSender,
+                                        senderName: storedMessage.pushName || 'Unknown',
+                                        text: storedText,
+                                        mtype: Object.keys(content)[0] || 'text',
+                                        mediaType: storedMediaType,
+                                        mediaCaption: storedMediaCaption,
+                                        fullMessage: content,
+                                        timestamp: Number(storedMessage.messageTimestamp || Date.now() / 1000) * 1000,
+                                        from: storedRemoteJid.endsWith('@g.us') ? storedRemoteJid : normalizeJid(storedRemoteJid),
+                                        remoteJid: storedRemoteJid,
+                                        mimetype: content.documentMessage?.mimetype ||
+                                            content.imageMessage?.mimetype ||
+                                            content.videoMessage?.mimetype
+                                    };
+                                    console.log(`✅ Antidelete recovered message ${targetId} from store for ${storedRemoteJid}`);
+                                    break;
+                                } catch (storeError) {
+                                    console.log(`⚠️ Antidelete store lookup failed for ${storeJid}: ${storeError.message}`);
+                                }
+                            }
+                        }
+
                         if (!msgData) {
-                            console.log(`⚠️ Antidelete: original message not found for ${messageKey}; checked ${candidateKeys.length} key formats`);
+                            console.log(`⚠️ Antidelete: original message not found for ${messageKey}; checked ${candidateKeys.length} cache key formats and message store`);
                             continue;
                         }
                         
