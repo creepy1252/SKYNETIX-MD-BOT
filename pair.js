@@ -498,7 +498,17 @@ async function startpairing(kingbadboiNumber) {
         })
     }
 
-    bad.public = true
+    // Load the persisted access mode for this WhatsApp account.
+    // Public accepts group and private commands; private/self accepts only the owner.
+    try {
+        const botModeFile = path.join(__dirname, 'allfunc', 'botmode.txt');
+        const savedMode = fs.existsSync(botModeFile)
+            ? fs.readFileSync(botModeFile, 'utf8').trim().toLowerCase()
+            : 'public';
+        bad.public = savedMode !== 'private' && savedMode !== 'self';
+    } catch {
+        bad.public = true;
+    }
     bad.sendText = (jid, text, quoted = '', options) => bad.sendMessage(jid, { text: text, ...options }, { quoted })
 
     bad.getFile = async (PATH, save) => {

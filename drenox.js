@@ -13092,16 +13092,14 @@ module.exports = async function handleMessage(bad, mek, chatUpdate, store) {
             if (fromMe) continue
             
 // ==================== EXTRACT MESSAGE BODY ====================
-// group only
-if (!chatId.endsWith('@g.us')) return
-
-// ignore bot messages
-if (msg.key.fromMe) return
+// This listener only performs group anti-link work. Skip non-group and
+// self-authored messages without aborting the rest of the upsert batch.
+const chatId = msg.key.remoteJid
+if (!chatId || !chatId.endsWith('@g.us')) continue
+if (msg.key.fromMe) continue
 
 // body extract
 const messageTypes = msg.message
-
-const chatId = msg.key.remoteJid
 let body = messageTypes?.conversation || 
            messageTypes?.extendedTextMessage?.text || 
            messageTypes?.imageMessage?.caption || 
