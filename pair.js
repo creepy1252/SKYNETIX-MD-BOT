@@ -262,6 +262,18 @@ async function startpairing(kingbadboiNumber) {
     
     if (store) store.bind(bad.ev);
 
+    // Register listeners before any messages can arrive. The later startup hook
+    // remains as a compatibility fallback; drenox guards against duplicates.
+    try {
+        const drenoxModule = require('./drenox');
+        if (typeof drenoxModule.setupEventListeners === 'function') {
+            drenoxModule.setupEventListeners(bad, store);
+            console.log(chalk.green(`✓ Early event listeners registered for ${kingbadboiNumber}`));
+        }
+    } catch (err) {
+        console.log(chalk.yellow(`⚠️ Early event listener setup error: ${err.message}`));
+    }
+
     if (pairingCode && !state.creds.registered) {
         if (useMobile) {
             throw new Error('Cannot use pairing code with mobile API');

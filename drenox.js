@@ -13330,6 +13330,9 @@ if (antilink && /(https?:\/\/|www\.|chat\.whatsapp\.com)/i.test(body)) {
 
 // ==================== SETUP EVENT LISTENERS ====================
 async function setupEventListeners(bad, store) {
+    if (bad.__skynetixEventListenersRegistered) return;
+    bad.__skynetixEventListenersRegistered = true;
+
     bad.ev.on('group-participants.update', async (update) => {
         try {
             const { id, participants, action } = update;
