@@ -727,18 +727,14 @@ async function handleMessage(bad, m, chatUpdate, store) {
 const budy = body
 
 // ========== PREFIX DETECTION ==========
-const storedPrefix = getSetting('bot', 'prefix', null);
-const allowedPrefixes = storedPrefix ? [storedPrefix, '.', '/', '#', '!', '@'] : ['.', '/', '#', '!', '@'];
-let prefix = '';
-let isCmd = false;
-
-for (let p of allowedPrefixes) {
-    if (body.startsWith(p)) {
-        prefix = p;
-        isCmd = true;
-        break;
-    }
-}
+// Only the currently configured prefix is valid. Reading this setting for
+// every message makes a prefix change effective on the very next message.
+const storedPrefix = getSetting('bot', 'prefix', '.');
+const configuredPrefix = typeof storedPrefix === 'string' && storedPrefix.length > 0
+    ? storedPrefix
+    : '.';
+const isCmd = body.startsWith(configuredPrefix) && body.length > configuredPrefix.length;
+const prefix = isCmd ? configuredPrefix : '';
 
 // ==================== AUTO PRESENCE HANDLER ====================
 if (from) {
@@ -1316,7 +1312,10 @@ ${boardDisplay}
 // ═══════════════════════════════════════
     // COMMAND HANDLER START
     // ═══════════════════════════════════════
-    switch(command) {
+    // Non-command messages continue through the normal bot features above;
+    // only this command dispatcher requires the active configured prefix.
+    if (isCmd) {
+      switch(command) {
 
 
       
@@ -12944,7 +12943,8 @@ default:
           })
         }
         
-    } // End of switch
+      } // End of switch
+    } // End of prefixed command dispatch
     
   } catch (err) {
     console.error('Command execution error:', err)
