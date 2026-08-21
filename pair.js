@@ -219,6 +219,10 @@ async function startpairing(kingbadboiNumber) {
     }
     
     const tracker = rentbotTracker.get(kingbadboiNumber);
+    if (tracker.connection && !tracker.disconnected && tracker.connection.ws?.readyState === 1) {
+        console.log(chalk.yellow(`ℹ️ Reusing active connection for ${kingbadboiNumber}`));
+        return tracker.connection;
+    }
     tracker.retryCount++;
     tracker.disconnected = false;
     tracker.lastActivity = Date.now();

@@ -57,10 +57,10 @@ const loadingAnimations = new Map()
 global.autoViewStatus = global.autoViewStatus ?? true
 global.autoLikeStatus = global.autoLikeStatus ?? true
 global.autoread = global.autoread ?? false
-global.autobio = global.autobio ?? false
+global.autobio = getSetting('bot', 'autobio', false)
 global.autoTyping = global.autoTyping ?? false
 global.autoRecording = global.autoRecording ?? false
-global.autoPresence = global.autoPresence ?? 'off'
+global.autoPresence = getSetting('bot', 'autoPresence', 'off')
 global.autoReply = global.autoReply ?? false
 
 
@@ -3216,6 +3216,7 @@ case 'autobio': {
   }
   
   global.autobio = action === 'on'
+  setSetting('bot', 'autobio', global.autobio)
   
   if (action === 'on') {
     // Update bio immediately
@@ -3877,7 +3878,8 @@ case 'autoonline': {
   if (!isCreator) return reply('ᴏᴡɴᴇʀ ᴏɴʟʏ.')
   
   const modes = ['off', 'typing', 'recording', 'online']
-  const mode = args[0]?.toLowerCase()
+  const requestedMode = args[0]?.toLowerCase()
+  const mode = requestedMode === 'on' ? 'online' : requestedMode
   
   if (!mode || !modes.includes(mode)) {
     return reply(`ᴜsᴇ: ${prefix}autopresence <mode>
@@ -3892,6 +3894,7 @@ case 'autoonline': {
   }
   
   global.autoPresence = mode
+  setSetting('bot', 'autoPresence', mode)
   
   reply(`✅ ᴀᴜᴛᴏ ᴘʀᴇsᴇɴᴄᴇ sᴇᴛ ᴛᴏ: ${mode}`)
 }
@@ -10702,20 +10705,23 @@ ${prefix}ccgen MasterCard 5`)
     
     if (parseInt(amount) > 10) return reply('❌ ᴍᴀxɪᴍᴜᴍ 10 ᴄᴀʀᴅs ᴀᴛ ᴏɴᴄᴇ')
     
-    const response = await axios.get(`https://apis.davidcyriltech.my.id/tools/ccgen?type=${type}&amount=${amount}`)
-    const cards = response.data.result
-    
-    if (!cards || cards.length === 0) return reply('❌ ғᴀɪʟᴇᴅ ᴛᴏ ɢᴇɴᴇʀᴀᴛᴇ ᴄᴀʀᴅs')
-    
-    let cardList = `*╭━━〔 💳 ${type.toUpperCase()} 〕━━┈⊷*\n┃\n`
-    
-    cards.forEach((card, i) => {
-      cardList += `┃ ${i + 1}. \`${card.number}\`\n`
-      cardList += `┃    ᴇxᴘ: ${card.expiry} | ᴄᴠᴠ: ${card.cvv}\n┃\n`
-    })
-    
-    cardList += `┃ ⚠️ ᴛᴇsᴛ ᴄᴀʀᴅs ᴏɴʟʏ\n┃ 🚫 ɴᴏᴛ ғᴏʀ ғʀᴀᴜᴅ\n*╰━━━━━━━━━━━━━━━┈⊷*`
-    
+    const testCards = {
+      visa: { number: '4242424242424242', cvv: '123' },
+      mastercard: { number: '5555555555554444', cvv: '123' },
+      amex: { number: '378282246310005', cvv: '1234' },
+      discover: { number: '6011111111111117', cvv: '123' }
+    }
+    const cardType = type.toLowerCase().replace(/[^a-z]/g, '')
+    const template = testCards[cardType]
+    const count = Math.min(Math.max(parseInt(amount, 10) || 1, 1), 10)
+    if (!template) return reply('❌ Supported test types: Visa, MasterCard, Amex, Discover')
+
+    let cardList = `*╭━━〔 🧪 ${cardType.toUpperCase()} TEST DATA 〕━━┈⊷*\n┃\n`
+    for (let i = 0; i < count; i++) {
+      cardList += `┃ ${i + 1}. \`${template.number}\`\n`
+      cardList += `┃    ᴇxᴘ: 12/2030 | ᴄᴠᴠ: ${template.cvv}\n┃\n`
+    }
+    cardList += `┃ ⚠️ ᴘᴜʙʟɪᴄ ᴛᴇsᴛ ᴄᴀʀᴅs ᴏɴʟʏ\n┃ 🚫 ɴᴏ ʀᴇᴀʟ ᴘᴀʏᴍᴇɴᴛs\n*╰━━━━━━━━━━━━━━━┈⊷*`
     reply(cardList)
     
   } catch (error) {
@@ -11769,6 +11775,7 @@ break;
 
   case 'pair': {
     try {
+        if (!isCreator) return reply('❌ ᴏɴʟʏ ᴛʜᴇ ᴄᴏɴɴᴇᴄᴛᴇᴅ ʙᴏᴛ ᴏᴡɴᴇʀ ᴄᴀɴ ᴘᴀɪʀ ᴀɴᴏᴛʜᴇʀ ᴀᴄᴄᴏᴜɴᴛ.')
         // ✅ Check free RAM only
         const freeStorage = os.freemem() / (1024 * 1024); // in MB
         if (freeStorage < 300) {

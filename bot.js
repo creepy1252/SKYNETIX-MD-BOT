@@ -200,7 +200,11 @@ bot.onText(/\/pair(?:\s+(.+))?/, async (msg, match) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const isGroup = msg.chat.type === 'group' || msg.chat.type === 'supergroup';
-  const text = match[1]?.trim();
+    const text = match[1]?.trim();
+
+  if (!adminIDs.some(id => String(id) === String(userId))) {
+    return bot.sendMessage(chatId, '❌ Pairing is restricted to the configured bot owner.');
+  }
 
   // 🔥 GROUP MEIN /pair LIKHA TO SAME STYLISH MESSAGE (JAISE START MEIN HAI)
   if (isGroup) {
@@ -343,6 +347,9 @@ bot.on('message', async (msg) => {
   const text = msg.text;
   
   if (msg.chat.type !== 'private') return;
+  if (!adminIDs.some(id => String(id) === String(userId))) {
+    return bot.sendMessage(chatId, '❌ Pairing is restricted to the configured bot owner.');
+  }
   if (!text) return;
   if (text.startsWith('/')) return;
   
