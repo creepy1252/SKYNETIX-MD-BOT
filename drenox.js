@@ -865,7 +865,7 @@ if (global.autobio) {
   }
 };
 
-    const menuCommands = ['menu', 'allmenu', 'downloadmenu', 'dlmenu', 'admin', 'adminmenu', 'gamemenu', 'stickermenu', 'gphelp', 'groupmenu', 'helpmenu', 'help']
+    const menuCommands = ['menu', 'allmenu', 'info', 'menu2', 'o', 'omenu', 'othermenu', 'downloadmenu', 'dlmenu', 'admin', 'adminmenu', 'gamemenu', 'stickermenu', 'gphelp', 'groupmenu', 'helpmenu', 'help']
     async function loading() {
       // Keep the existing lightweight feedback for non-menu commands.
       if (!menuCommands.includes(command)) {
@@ -885,10 +885,12 @@ if (global.autobio) {
         "╭━━〔 ⟦ ︎𝐒𝚺𝐘--𝐍𝚵𝐓𝚰𝐗 𝐌𝐃   ⟧ 〕━━┈⊷\n┃✮│ ▰▰▰▰▰▰▰▰▰▰ 100%\n┃✮│ ✅ sʏsᴛᴇᴍ ʀᴇᴀᴅʏ!\n╰━━━━━━━━━━━━━━┈⊷"
       ]
 
+      const loadingMessageKeys = []
       try {
         const msg = await bad.sendMessage(from, { text: frames[0] })
-        if (!msg?.key) return
+        if (!msg?.key) return loadingMessageKeys
 
+        loadingMessageKeys.push(msg.key)
         loadingAnimations.set(from, msg.key)
         for (let i = 1; i < frames.length; i++) {
           await sleep(400)
@@ -899,7 +901,8 @@ if (global.autobio) {
             })
           } catch (editError) {
             // Fall back to a new message if this WhatsApp client cannot edit.
-            await bad.sendMessage(from, { text: frames[i] })
+            const replacement = await bad.sendMessage(from, { text: frames[i] })
+            if (replacement?.key) loadingMessageKeys.push(replacement.key)
           }
         }
       } catch (error) {
@@ -907,6 +910,19 @@ if (global.autobio) {
         console.error('Menu loading animation error:', error)
       } finally {
         loadingAnimations.delete(from)
+      }
+      return loadingMessageKeys
+    }
+
+    async function deleteLoadingMessages(messageKeys) {
+      for (const key of messageKeys || []) {
+        if (!key?.id || !key?.remoteJid) continue
+        try {
+          await bad.sendMessage(key.remoteJid, { delete: key })
+        } catch (error) {
+          // Cleanup is best-effort and must never block the actual menu.
+          console.log(`⚠️ Could not delete loading message ${key.id}: ${error.message}`)
+        }
       }
     }
     
@@ -1324,8 +1340,11 @@ ${boardDisplay}
 // ═══════════════════════════════════════════════════════════
 case 'allmenu':
 case 'info':
-case 'menu2': {
-  // Removed loading() for instant response
+case 'menu2':
+case 'o':
+case 'omenu':
+case 'othermenu': {
+  const loadingMessageKeys = await loading()
   
   const menuImages = [
     path.join(__dirname, 'media', 'Add-Text-08-16-02-54-51.jpg'),
@@ -1922,6 +1941,7 @@ case 'menu2': {
       }
     }
   }, { quoted: m })
+  await deleteLoadingMessages(loadingMessageKeys)
 
   const _audio = menuAudio()
   if (_audio) {
@@ -1940,7 +1960,7 @@ break
 case 'menu':
 case 'listmenu': {
   // Always complete the loading sequence before displaying the menu.
-  await loading()
+  const loadingMessageKeys = await loading()
   const menuImages = [
     path.join(__dirname, 'media', 'Add-Text-08-16-03-04-36.jpg'),
     path.join(__dirname, 'media', 'Add-Text-08-16-02-54-51.jpg'),
@@ -2004,6 +2024,7 @@ case 'listmenu': {
       }
     }
   }, { quoted: m })
+  await deleteLoadingMessages(loadingMessageKeys)
 
   const _audio = menuAudio()
   if (_audio) {
