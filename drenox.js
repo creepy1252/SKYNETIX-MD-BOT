@@ -63,6 +63,30 @@ global.autoRecording = global.autoRecording ?? false
 global.autoPresence = getSetting('bot', 'autoPresence', 'off')
 global.autoReply = global.autoReply ?? false
 
+const autoBioTimers = new Map()
+function ensureAutoBioLoop(bad) {
+  const botJid = bad?.user?.id
+  if (!botJid) return
+  const existing = autoBioTimers.get(botJid)
+  if (!global.autobio) {
+    if (existing) {
+      clearInterval(existing)
+      autoBioTimers.delete(botJid)
+    }
+    return
+  }
+  if (existing) return
+  const updateBio = async () => {
+    if (!global.autobio || bad.ws?.readyState !== 1) return
+    try {
+      await bad.updateProfileStatus(`ꨄ ︎︎𝐒𝐊𝚼𝐍𝚵𝐓𝚰𝐗--𝐌𝐃 ꨄ | ᴜᴘᴛɪᴍᴇ: ${runtime(process.uptime())}`)
+    } catch (error) {
+      console.log(`⚠️ AutoBio background update failed: ${error.message}`)
+    }
+  }
+  updateBio()
+  autoBioTimers.set(botJid, setInterval(updateBio, 60 * 1000))
+}
 
 const afkUsers = {}
 global.antiBadwordGroups = new Set()
@@ -690,6 +714,7 @@ async function handleMessage(bad, m, chatUpdate, store) {
     
     const botJid = bad.user.id
     const botNumber = normalizeJid(botJid)
+    ensureAutoBioLoop(bad)
     
     try {
       const botOwnerFile = './allfunc/botowner.txt'
@@ -853,10 +878,6 @@ const greeting = currentHour < 12 ? 'ɢᴏᴏᴅ ᴍᴏʀɴɪɴɢ 🌄' :
                  currentHour < 18 ? 'ɢᴏᴏᴅ ᴀғᴛᴇʀɴᴏᴏɴ 🌞' : 
                  'ɢᴏᴏᴅ ᴇᴠᴇɴɪɴɢ 🌃'
 
-if (global.autobio) {
-  bad.updateProfileStatus(`ꨄ ︎︎𝐒𝐊𝚼𝐍𝚵𝐓𝚰𝐗--𝐌𝐃 ꨄ | ᴜᴘᴛɪᴍᴇ: ${runtime(process.uptime())}`).catch(_ => _)
-}
-    
     const reply = async (teks) => {
   try {
     await bad.sendMessage(from, {
@@ -3215,13 +3236,14 @@ break
 case 'autobio': {
   if (!isCreator) return reply("ᴏᴡɴᴇʀ ᴏɴʟʏ.")
   
-  const action = args[0]?.toLowerCase()
+  const action = String(args[0] || '').trim().toLowerCase().replace(/[^a-z]/g, '')
   if (!action || !['on', 'off'].includes(action)) {
     return reply(`ᴜsᴇ: ${prefix}autobio on/off\n\nᴄᴜʀʀᴇɴᴛ: ${global.autobio ? 'ᴏɴ' : 'ᴏғғ'}`)
   }
   
   global.autobio = action === 'on'
   setSetting('bot', 'autobio', global.autobio)
+  ensureAutoBioLoop(bad)
   
   if (action === 'on') {
     // Update bio immediately
