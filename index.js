@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const http = require('http');
 const chalk = require('chalk');
 const figlet = require('figlet');
 
@@ -15,8 +16,32 @@ const startpairing = require('./pair');
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+// Lightweight health server for Railway, panels, and similar hosts.
+// It also keeps the Node process attached to a serving port without touching
+// WhatsApp message handling or bot settings.
+let healthServer;
+const startAntiSleepServer = () => {
+    if (healthServer) return;
+    const port = Number(process.env.PORT) || 3000;
+    healthServer = http.createServer((req, res) => {
+        if (req.url === '/health' || req.url === '/') {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ status: 'ok', service: 'skynetix-md-bot', uptime: process.uptime() }));
+            return;
+        }
+        res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ status: 'not_found' }));
+    });
+    healthServer.on('error', error => {
+        console.error(`❌ Anti-sleep health server error: ${error.message}`);
+    });
+    healthServer.listen(port, '0.0.0.0', () => {
+        console.log(chalk.green(`✅ Anti-sleep health server listening on port ${port}`));
+    });
+};
+
 const autoLoadPairs = async () => {
-    console.log(chalk.cyan('🔄 Auto-loading all paired users...'));
+    console.log(chalk.yellow('🔄 Auto-loading all paired users...'));
     
     if (!fs.existsSync(PAIRING_DIR)) {
         console.log(chalk.red('❌ Pairing directory not found.'));
@@ -66,6 +91,7 @@ const autoLoadPairs = async () => {
 
 const initializeBot = async () => {
     console.clear();
+    startAntiSleepServer();
     console.log(chalk.cyan(figlet.textSync('☠︎︎𝐒𝚺𝐘--𝐍𝚵𝐓𝚰𝐗☠', {
         font: 'Standard',
         horizontalLayout: 'default',

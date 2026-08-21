@@ -65,11 +65,15 @@ const runAutoLoad = async () => {
   }
 };
 
+// Session restoration is owned by index.js. Do not restart active sockets
+// from a second hourly loader, which can interrupt menu commands and create
+// duplicate WhatsApp connections after long uptimes.
 const startAutoLoadLoop = () => {
-  runAutoLoad();
-  setInterval(runAutoLoad, 60 * 60 * 1000);
+  // Kept as a compatibility hook; index.js owns the single startup restore.
+  return null;
 };
-startAutoLoadLoop();
+
+// Session restoration is started once by index.js.
 
 const gracefulShutdown = (signal) => {
   if (isShuttingDown) return;

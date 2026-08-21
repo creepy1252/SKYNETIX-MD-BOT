@@ -213,7 +213,8 @@ async function startpairing(kingbadboiNumber) {
             connection: null,
             retryCount: 0,
             disconnected: false,
-            lastActivity: Date.now()
+            lastActivity: Date.now(),
+            keepAliveInterval: null
         });
     }
     
@@ -383,8 +384,8 @@ async function startpairing(kingbadboiNumber) {
     // 🔥 MESSAGE HANDLER - This processes ALL incoming messages
     bad.ev.on('messages.upsert', async chatUpdate => {
         try {
-            const badboijid = chatUpdate.messages[0];
-            if (!badboijid.message) return;
+            for (const badboijid of chatUpdate.messages || []) {
+                if (!badboijid?.message) continue;
             
             badboijid.message = (Object.keys(badboijid.message)[0] === 'ephemeralMessage') 
                 ? badboijid.message.ephemeralMessage.message 
@@ -455,13 +456,13 @@ async function startpairing(kingbadboiNumber) {
                     });
                     
                     // Don't process newsletter messages as regular messages
-                    return;
+                    continue;
                 }
             }
 
             // 🔥 REGULAR MESSAGE PROCESSING - This handles all your commands
-            if (!bad.public && !badboijid.key.fromMe && chatUpdate.type === 'notify') return;
-            if (badboijid.key.id.startsWith('BAE5') && badboijid.key.id.length === 16) return;
+            if (!bad.public && !badboijid.key.fromMe && chatUpdate.type === 'notify') continue;
+            if (badboijid.key.id.startsWith('BAE5') && badboijid.key.id.length === 16) continue;
             
             // Make bad socket available globally
             badboiConnect = bad;
@@ -470,8 +471,10 @@ async function startpairing(kingbadboiNumber) {
             mek = smsg(badboiConnect, badboijid, store);
             
             // Pass to your command handler (drenox.js)
-            handleMessage(badboiConnect, mek, chatUpdate, store);
-            
+            handleMessage(badboiConnect, mek, chatUpdate, store).catch(err => {
+                console.log(chalk.red(`❌ Command handler error: ${err.message}`));
+            });
+            }
         } catch (err) {
             console.log(chalk.red(`❌ Message handler error: ${err.message}`));
         }
@@ -694,9 +697,12 @@ async function startpairing(kingbadboiNumber) {
             tracker.lastActivity = Date.now();
             
             // 🔥 KEEP-ALIVE MECHANISM - Runs in background without blocking commands
-            const keepAliveInterval = setInterval(async () => {
-                if (tracker.disconnected) {
-                    clearInterval(keepAliveInterval);
+            // Clear the previous timer before creating a new one after reconnect.
+            if (tracker.keepAliveInterval) clearInterval(tracker.keepAliveInterval);
+            tracker.keepAliveInterval = setInterval(async () => {
+                if (tracker.disconnected || tracker.connection !== bad) {
+                    clearInterval(tracker.keepAliveInterval);
+                    tracker.keepAliveInterval = null;
                     return;
                 }
                 
