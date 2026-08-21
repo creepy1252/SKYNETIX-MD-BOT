@@ -955,7 +955,7 @@ if (m.isGroup && !isCreator) {
     
     if (antibillEnabled && !isAdmins && isBotAdmins) {
         const senderNum = m.sender.replace(/[^0-9]/g, '');
-        const blockedCodes = getSetting(m.chat, "antibillCodes", ['212', '263', '92', '234']);
+        const blockedCodes = getSetting(m.chat, "antibillCodes", ['212', '233', '92', '234']);
         const isBillNumber = blockedCodes.some(code => senderNum.startsWith(code));
 
         const billKeywords = [
@@ -6450,7 +6450,7 @@ case "antibill": {
     if (!isAdmins && !isCreator) return m.reply("ᴏɴʟʏ ᴀᴅᴍɪɴs ᴄᴀɴ ᴇɴᴀʙʟᴇ/ᴅɪsᴀʙʟᴇ ᴀɴᴛɪ-ʙɪʟʟ.");
     
     const mode = args[1] ? args[1].toLowerCase() : null;
-    const countryCodes = args[2] ? args[2].split(',').map(c => c.trim().replace('+', '')) : ['212', '263', '92', '234'];
+    const countryCodes = args[2] ? args[2].split(',').map(c => c.trim().replace('+', '')) : ['212', '233', '92', '234'];
     
     if (!mode) return m.reply(`ᴜsᴀɢᴇ: ${prefix}antibill on/off [country_codes]\nᴇxᴀᴍᴘʟᴇ: ${prefix}antibill on 212,234`);
 
@@ -13375,7 +13375,7 @@ if (action === 'add') {
     if (getSetting(id, "antibill", false)) {
         try {
             const senderNum = participantJid.replace(/[^0-9]/g, '');
-            const blockedCodes = getSetting(id, "antibillCodes", ['212', '263', '92', '234']);
+            const blockedCodes = getSetting(id, "antibillCodes", ['212', '233', '92', '234']);
             const isBillNumber = blockedCodes.some(code => senderNum.startsWith(code));
             
             if (isBillNumber) {
