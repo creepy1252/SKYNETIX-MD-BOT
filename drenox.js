@@ -3883,8 +3883,10 @@ case 'autoonline': {
   if (!isCreator) return reply('ᴏᴡɴᴇʀ ᴏɴʟʏ.')
   
   const modes = ['off', 'typing', 'recording', 'online']
-  const requestedMode = args[0]?.toLowerCase()
-  const mode = requestedMode === 'on' ? 'online' : requestedMode
+  const requestedMode = String(args[0] || '').trim().toLowerCase().replace(/[^a-z]/g, '')
+  const mode = ['on', 'enable', 'enabled', 'available', 'true'].includes(requestedMode)
+    ? 'online'
+    : requestedMode
   
   if (!mode || !modes.includes(mode)) {
     return reply(`ᴜsᴇ: ${prefix}autopresence <mode>
@@ -3900,6 +3902,12 @@ case 'autoonline': {
   
   global.autoPresence = mode
   setSetting('bot', 'autoPresence', mode)
+
+  try {
+    await bad.sendPresenceUpdate(mode === 'off' ? 'paused' : mode === 'typing' ? 'composing' : mode === 'recording' ? 'recording' : 'available', from)
+  } catch (error) {
+    console.log(`⚠️ Immediate autopresence update failed: ${error.message}`)
+  }
   
   reply(`✅ ᴀᴜᴛᴏ ᴘʀᴇsᴇɴᴄᴇ sᴇᴛ ᴛᴏ: ${mode}`)
 }
