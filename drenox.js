@@ -733,7 +733,12 @@ const storedPrefix = getSetting('bot', 'prefix', '.');
 const configuredPrefix = typeof storedPrefix === 'string' && storedPrefix.length > 0
     ? storedPrefix
     : '.';
-const isCmd = body.startsWith(configuredPrefix) && body.length > configuredPrefix.length;
+const normalizedBody = String(body).trim();
+const hasConfiguredPrefix = normalizedBody.startsWith(configuredPrefix);
+const commandBody = hasConfiguredPrefix
+    ? normalizedBody.slice(configuredPrefix.length).trimStart()
+    : '';
+const isCmd = hasConfiguredPrefix && commandBody.length > 0;
 const prefix = isCmd ? configuredPrefix : '';
 
 // ==================== AUTO PRESENCE HANDLER ====================
@@ -754,8 +759,8 @@ if (from) {
 }
 
 // ✅ Args & command
-const args = body.slice(prefix.length).trim().split(/ +/);
-const command = args[0]?.toLowerCase() || '';
+const args = (isCmd ? commandBody : normalizedBody).trim().split(/ +/);
+const command = isCmd ? (args[0]?.toLowerCase() || '') : '';
 const text = args.slice(1).join(" ").trim();
 const q = text;
 
