@@ -77,15 +77,15 @@ function ensureAutoBioLoop(bad) {
   }
   if (existing) return
   const updateBio = async () => {
-    if (!global.autobio || bad.ws?.readyState !== 1) return
+    if (!global.autobio) return
     try {
       await bad.updateProfileStatus(`ꨄ ︎︎𝐒𝐊𝚼𝐍𝚵𝐓𝚰𝐗--𝐌𝐃 ꨄ | ᴜᴘᴛɪᴍᴇ: ${runtime(process.uptime())}`)
     } catch (error) {
       console.log(`⚠️ AutoBio background update failed: ${error.message}`)
     }
   }
-  updateBio()
-  autoBioTimers.set(botJid, setInterval(updateBio, 60 * 1000))
+  void updateBio()
+  autoBioTimers.set(botJid, setInterval(() => { void updateBio() }, 60 * 1000))
 }
 
 const afkUsers = {}
@@ -3236,7 +3236,10 @@ break
 case 'autobio': {
   if (!isCreator) return reply("ᴏᴡɴᴇʀ ᴏɴʟʏ.")
   
-  const action = String(args[0] || '').trim().toLowerCase().replace(/[^a-z]/g, '')
+  const actionCandidates = [args?.[0], q, text?.split(/\s+/)[0]]
+  const action = actionCandidates
+    .map(value => String(value || '').trim().toLowerCase().replace(/[^a-z]/g, ''))
+    .find(value => ['on', 'off'].includes(value)) || ''
   if (!action || !['on', 'off'].includes(action)) {
     return reply(`ᴜsᴇ: ${prefix}autobio on/off\n\nᴄᴜʀʀᴇɴᴛ: ${global.autobio ? 'ᴏɴ' : 'ᴏғғ'}`)
   }
